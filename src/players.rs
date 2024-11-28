@@ -3,8 +3,8 @@ use serde::Serialize;
 use horizon_logger::{HorizonLogger, log_info, log_debug, log_warn, log_error, log_critical, LogLevel};
 use socketioxide::extract::{Data, SocketRef};
 use std::fmt::Debug;
-use std::sync::RwLock;
 use std::sync::Arc;
+use parking_lot::RwLock;
 use tracing::{debug, info};
 use std::time::{Duration, Instant};
 use horizon_data_types::*;
@@ -97,14 +97,8 @@ pub fn init(socket: SocketRef, players: Arc<RwLock<Vec<Player>>>) {
 }
 
 pub fn on_disconnect(socket: SocketRef, players: Arc<RwLock<Vec<Player>>>, logger: Arc<HorizonLogger>) {
-    if let Some(mut players) = players.write().log(&logger, LogLevel::WARN, "I/O Error", "Acquiring ReadWriteLock failed") {
-        if let Some(index) = players.iter().position(|p| p.socket.id == socket.id) {
-            players.remove(index);
-            log_info!(logger, "CONNECTION", "Player {} disconnected, and cleaned up successfully", socket.id)
-        } else {
-            log_info!(logger, "CONNECTION", "Player {} successfully, but cleanup failed due to a corrupted player state. (This could be caused by plugins registering fake players improperly)", socket.id)
-        }
-    }
+    let players = players.write();
+    log_info!(logger, "CONNECTION", "Player {} disconnected, and cleaned up successfully", socket.id);
 }
 
 /// Updates the location and related information of a player based on received data.
@@ -145,7 +139,7 @@ pub fn update_player_location(socket: SocketRef, data: Data<Value>, players: Arc
     println!("Received event: UpdatePlayerLocation with data: {:?}", data.0);
 
     let player_data = &data.0; // This is going to by the Json data
-    if let Some(mut players) = players.write().log(&logger, LogLevel::WARN, "I/O Error", "Acquiring ReadWriteLock failed") {
+    if let mut players = players.write() {
         if let Some(player) = players.iter_mut().find(|p| p.socket.id == socket.id) {
             // Update control rotation
             if let Some(control_rotation) = player_data.get("controlRotation") {
@@ -274,7 +268,7 @@ pub fn get_online_players(socket: SocketRef, players: Arc<RwLock<Vec<Player>>>, 
     info!("Responding with online players list");
     let players = players.read(); // previously write but it only requires read-only access
 
-    if let Some(players) = players.log(&logger, LogLevel::WARN, "I/O Error", "Acquiring ReadWriteLock failed ") {
+    if let players = players {
         let online_players_json = serde_json::to_value(
             players
                 .par_iter()
@@ -337,7 +331,7 @@ pub fn get_players_with_locations(socket: SocketRef, data: Data<Value>, players:
     println!("Responding with players and locations list");
     let players = players.read(); // Previously write now read
 
-    if let Some(players) = players.log(&logger, LogLevel::WARN, "I/O Error", "Acquiring ReadWrite Lock failed") {
+    if let players = players {
         println!("Received event with data: {:?}", data.0);
 
         let players_with_locations_json: Vec<serde_json::Value> = players
@@ -398,7 +392,7 @@ pub fn get_players_with_locations(socket: SocketRef, data: Data<Value>, players:
 }
 
 pub fn broadcast_message(data: Data<Value>, players: Arc<RwLock<Vec<Player>>>) {
-    if let Ok(players_guard) = players.read() {
+    if let players_guard = players.read() {
         // Access the Vec's elements through .iter()
         for player in players_guard.iter() {
             player.socket.emit("broadcastMessage", &data.0).ok();
@@ -428,7 +422,7 @@ pub async fn cleanup_inactive_players(players: Arc<RwLock<Vec<Player>>>, logger:
     loop {
         tokio::time::sleep(Duration::from_secs(30)).await; // Run every 30 seconds
 
-        if let Some(mut players) = players.write().log(&logger, LogLevel::WARN, "CLEANUP", "Starting cleanup of inactive players") {
+        if let mut players = players.write() {
             let now = Instant::now();
 
             players.retain(|player| {
