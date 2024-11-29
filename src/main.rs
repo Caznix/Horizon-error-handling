@@ -21,15 +21,15 @@
 // License: Apache-2.0
 //==============================================================================
 // #[global_allocator] 
-// static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+// static ALLOCATOR: dhat::Alloc = dhat::Alloc;
 mod config;
 mod players;
 mod splash;
-
+static CTRL_C_HANDLER: Once = Once::new();
 use anyhow::{anyhow, Context, Result as Anyhow};
 use viz::{Body, Request, Response, Result};
 use horizon_logger::log_info;
-use std::result::Result::Ok;
+use std::{alloc, result::Result::Ok, sync::Once};
 use crate::server::CONFIG;
 use server::HorizonServer;
 use tokio::time::Instant;
@@ -57,6 +57,7 @@ async fn redirect_to_master_panel(_req: Request) -> Result<Response<Body>, viz::
 /// Main entry point for the Horizon Server
 #[tokio::main]
 async fn main() -> Anyhow<()> {
+    //let mut _profiler = Some(dhat::Profiler::new_heap());
     let init_time = Instant::now();
     let players_per_pool = CONFIG.players_per_pool;
     let num_thread_pools = CONFIG.num_thread_pools;
@@ -75,7 +76,24 @@ async fn main() -> Anyhow<()> {
         init_time.elapsed()
     );
 
+    let mut terminating: bool = false;
+    CTRL_C_HANDLER.call_once(|| {
+        // Register the Ctrl+C handler
+        ctrlc::set_handler(move ||  {
+            if !terminating {
+                terminating = true;
+
+                println!("Exit");
+                //drop(_profiler.take());
+                std::process::exit(0);
+                
+            }
+        },
+
+    ).expect("Failed to handle Ctrl+C")
+    });
     server.start().await;
+
 
     Ok(())
 }

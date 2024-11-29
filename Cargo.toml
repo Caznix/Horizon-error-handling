@@ -22,8 +22,8 @@ serde_yaml = "0.9.34"
 anyhow = "1.0.93"
 parking_lot = "0.12.3"
 mimalloc = "0.1.43"
-
-
+ctrlc = { version = "3.4.5", features = ["termination"] }
+dhat = "0.3.3"
 
 [[bin]]
 name = "horizon"
@@ -35,6 +35,9 @@ lto = "fat"
 codegen-units = 1
 panic = "abort"
 strip = true
+
+[profile.dev]
+codegen-units = 32
 
 [profile.profiling]
 inherits = "release"

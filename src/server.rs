@@ -172,7 +172,7 @@ impl HorizonServer {
                 let player: Player = Player::new(socket.clone(), Uuid::new_v4());
 
                 // Initialize player-specific handlers
-                players::init(socket.clone(), Arc::clone(&pool.players));
+                // players::init(socket.clone(), Arc::clone(&pool.players));
 
                 // Add player to pool
                 pool.players.write().push(player.clone());
