@@ -6,6 +6,7 @@ version = 4
 name = "Horizon"
 version = "0.13.0"
 dependencies = [
+ "anyhow",
  "horizon_data_types",
  "horizon_logger",
  "libloading",
@@ -130,6 +131,12 @@ checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "anyhow"
+version = "1.0.93"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c95c10ba0b00a02636238b814946408b1322d5ac4760326e6fb8ec956d85775"
 
 [[package]]
 name = "approx"
